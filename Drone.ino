@@ -9,11 +9,18 @@
 #include "PID.h"
 
 //#define TEST
+//#define PRINT_GYROSCOPE_DATA
+//#define PRINT_ACCELEROMETER_DATA
+//#define PRINT_MAGNETOMETER_DATA
+//#define PRINT_ALTITUDE
+//#define PRINT_VERTICAL_ACCELERATION
 //#define PRINT_POSTION
 //#define PRINT_TIME
 //#define PRINT_PILOT_MESSAGE
 //#define PRINT_PID_OUTPUT
-#define PRINT defined(PRINT_POSTION) ||  defined(PRINT_TIME) || defined(PRINT_PILOT_MESSAGE) || defined(PRINT_PID_OUTPUT)
+//#define PRINT_IS_UPSIDE_DOWN
+
+#define PRINT defined(PRINT_GYROSCOPE_DATA) || defined(PRINT_ACCELEROMETER_DATA) || defined(PRINT_MAGNETOMETER_DATA) || defined(PRINT_ALTITUDE) || defined(PRINT_VERTICAL_ACCELERATION) || defined(PRINT_POSTION) ||  defined(PRINT_TIME) || defined(PRINT_PILOT_MESSAGE) || defined(PRINT_PID_OUTPUT) || defined(PRINT_IS_UPSIDE_DOWN)
 
 enum class PowerState : unsigned char
 {
@@ -59,7 +66,7 @@ Calculator calculator(loopPeriod / 1000000.0);
 //PID rollRatePID{loopPeriod / 1000000.0, 0.000596324495246172f, 0.000217423864781117f, 0.0000413571213203448f};
 //PID pitchRatePID{loopPeriod / 1000000.0, 0.000670442670927328f, 0.000256029232402718f, 0.0000447767486366348f};
 PID rollRatePID{loopPeriod / 1000000.0, 0.000596324495246172f, 0.000217423864781117f, 0.0f};
-PID pitchRatePID{loopPeriod / 1000000.0, 1.5 * 0.000670442670927328f, 0.000256029232402718f, 0.0f};
+PID pitchRatePID{loopPeriod / 1000000.0, 1.2 * 0.000670442670927328f, 0.000206029232402718f, 0.0f};
 PID yawRatePID{loopPeriod / 1000000.0, 0.0003786872424349f, 0.0000144901288601733f, 0.00219841844854243f};
 //PID verticalSpeedPID{loopPeriod / 1000000.0, 20 * 0.01003002376891822f, 0.00256626346190803f, 0.0000f};
 PID verticalAccelertionPID{loopPeriod / 1000000.0, 0.01003002376891822f, 0.00256626346190803f, 0.0000f};
@@ -94,9 +101,15 @@ const char* powerStateToString(PowerState powerState)
   }
 }
 
-bool isUpsiteDown(float accZ)
+bool isUpsideDown(float accZ)
 {
   return accZ <= -0.75;
+}
+
+float linearizeThrottle(double throttle)
+{
+  double value = throttle < 0.01 ? 0.0 : 0.0247 + (1.9776 + (-2.736128 + (2.59260416 - 0.8589934592 * throttle) * throttle) * throttle) * throttle;
+  return max(0.0, min(value, 1.0));
 }
 
 void setup() 
@@ -138,6 +151,26 @@ void loop()
   float verticalAccelertion = calculator.calculateVerticalAccelertion(accelerometerData);
   Calculator::HeightAndVelocityData heightAndVelocity = calculator.calculateHeightAndVelocity(altitude, verticalAccelertion);
 
+  #ifdef PRINT_GYROSCOPE_DATA
+  Serial.print("gyroscope data: roll rate: "); Serial.print(gyroscopeData.rollRate); Serial.print(", pitch rate: "); Serial.print(gyroscopeData.pitchRate); Serial.print(", yaw rate: "); Serial.println(gyroscopeData.yawRate);
+  #endif
+
+  #ifdef PRINT_ACCELEROMETER_DATA
+  Serial.print("accelerometer data x: "); Serial.print(accelerometerData.x); Serial.print(", y: "); Serial.print(accelerometerData.y); Serial.print(", z: "); Serial.println(accelerometerData.z);
+  #endif
+
+  #ifdef PRINT_MAGNETOMETER_DATA
+  Serial.print("magnetometer data x: "); Serial.print(magnetometer.x); Serial.print(", y: "); Serial.print(magnetometer.y); Serial.print(", z: "); Serial.println(magnetometer.z);
+  #endif
+  
+  #ifdef PRINT_ALTITUDE
+  Serial.print("altitude: "); Serial.println(altitude);
+  #endif
+  
+  #ifdef PRINT_VERTICAL_ACCELERATION
+  Serial.print("vertical accelertion: "); Serial.println(verticalAccelertion);
+  #endif
+
   // handle drone message
   if (ebyte32.avalibleToReceive<PilotMessage, 1>())
   {
@@ -165,11 +198,11 @@ void loop()
       desiredVerticalSpeed = pilotMessage.verticalSpeed;
 
       #ifdef PRINT_PILOT_MESSAGE
-      Serial.print("pilotMessage.powerState: "); Serial.println(powerStateToString(pilotMessage.powerState));
-      Serial.print("pilotMessage.rollAngle: "); Serial.println(pilotMessage.rollAngle); 
-      Serial.print("pilotMessage.pitchAngle: "); Serial.println(pilotMessage.pitchAngle); 
-      Serial.print("pilotMessage.yawAngle: "); Serial.println(pilotMessage.yawAngle); 
-      Serial.print("pilotMessage.verticalSpeed: "); Serial.println(pilotMessage.verticalSpeed);
+      Serial.print("pilot message: power state: "); Serial.print(powerStateToString(pilotMessage.powerState));
+      Serial.print(", roll angle: "); Serial.print(pilotMessage.rollAngle); 
+      Serial.print(", pitch angle: "); Serial.print(pilotMessage.pitchAngle); 
+      Serial.print(", yaw angle: "); Serial.print(pilotMessage.yawAngle); 
+      Serial.print(", vertical speed: "); Serial.println(pilotMessage.verticalSpeed);
       #endif
     }
   }
@@ -178,7 +211,7 @@ void loop()
     isConnected = false;
   }
 
-  if (isUpsiteDown(accelerometerData.z))
+  if (isUpsideDown(accelerometerData.z))
   {
     motor0Speed = motor1Speed = motor2Speed = motor3Speed = 0.0f;
     rollRatePID.reset();
@@ -222,7 +255,7 @@ void loop()
     }
 
     desiredVerticalAccelertion = desiredVerticalSpeed - heightAndVelocity.velocity;
-    inputThrottle = min(0.5 + verticalAccelertionPID.step(desiredVerticalAccelertion - verticalAccelertion), 0.85);
+    inputThrottle = min(0.4 + verticalAccelertionPID.step(desiredVerticalAccelertion - verticalAccelertion), 0.85);
     desiredRollRate = desiredRollAngle - angles.rollAngle;
     inputRoll = rollRatePID.step(desiredRollRate - gyroscopeData.rollRate);
     desiredPitchRate = desiredPitchAngle - angles.pitchAngle;
@@ -231,10 +264,10 @@ void loop()
     inputYaw = 0;//yawRatePID.step(desiredYawRate - gyroscopeData.yawRate);
 
     #ifdef PRINT_PID_OUTPUT
-    Serial.print("inputThrottle: "); Serial.println(inputThrottle); 
-    Serial.print("inputRoll: "); Serial.println(inputRoll); 
-    Serial.print("inputPitch: "); Serial.println(inputPitch); 
-    Serial.print("inputYaw: "); Serial.println(inputYaw); 
+    Serial.print("pid output: input throttle: "); Serial.print(inputThrottle); 
+    Serial.print("input roll: "); Serial.print(inputRoll); 
+    Serial.print("input pitch: "); Serial.print(inputPitch); 
+    Serial.print("input yaw: "); Serial.print(inputYaw); 
     #endif
 
     motor0Speed = inputThrottle - inputPitch - inputRoll - inputYaw + 0.05;
@@ -242,27 +275,10 @@ void loop()
     motor2Speed = inputThrottle + inputPitch + inputRoll - inputYaw;
     motor3Speed = inputThrottle - inputPitch + inputRoll + inputYaw + 0.05;
 
-    motor0Speed = min(motor0Speed, 1.0f);
-    motor1Speed = min(motor1Speed, 1.0f);
-    motor2Speed = min(motor2Speed, 1.0f);
-    motor3Speed = min(motor3Speed, 1.0f);
-
-    if (motor0Speed < 0.04)
-    {
-      motor0Speed = 0.0f;
-    }
-    if (motor1Speed < 0.04)
-    {
-      motor1Speed = 0.0f;
-    }
-    if (motor2Speed < 0.04)
-    {
-      motor2Speed = 0.0f;
-    }
-    if (motor3Speed < 0.04)
-    {
-      motor3Speed = 0.0f;
-    }
+    motor0Speed = linearizeThrottle(min(motor0Speed, 1.0f));
+    motor1Speed = linearizeThrottle(min(motor1Speed, 1.0f));
+    motor2Speed = linearizeThrottle(min(motor2Speed, 1.0f));
+    motor3Speed = linearizeThrottle(min(motor3Speed, 1.0f));
     
     #endif
 
@@ -295,17 +311,24 @@ void loop()
   motor2.setSpeed(motor2Speed);
   motor3.setSpeed(motor3Speed);
 
-  #ifdef PRINT_POSTION
-  Serial.print(angles.rollAngle); Serial.print(" "); Serial.print(angles.pitchAngle); Serial.print(" "); Serial.print(angles.yawAngle); Serial.print(" "); Serial.print(heightAndVelocity.height); Serial.print(" "); Serial.print(heightAndVelocity.velocity); Serial.println(" ");
+  #ifdef PRINT_IS_UPSIDE_DOWN
+  Serial.print("is upside down: "); Serial.println(isUpsideDown(accelerometerData.z)); 
   #endif
 
+  #ifdef PRINT_POSTION
+  Serial.print("position: roll angle:"); Serial.print(angles.rollAngle); 
+  Serial.print(", pitch angle: "); Serial.print(angles.pitchAngle); 
+  Serial.print(", yaw angle: "); Serial.print(angles.yawAngle); 
+  Serial.print(", height: "); Serial.print(heightAndVelocity.height);
+  Serial.print(", vertical velocity: "); Serial.println(heightAndVelocity.velocity);
+  #endif
 
   // wait for end of the cycle
   #ifdef PRINT_TIME
-  Serial.print("calculation end: "); Serial.print(micros() - loopTime);
+  Serial.print("calculation end time: "); Serial.print(micros() - loopTime);
   #endif
   while(micros() - loopTime < loopPeriod);
   #ifdef PRINT_TIME
-  Serial.print(", loop end: "); Serial.println(micros() - loopTime);
+  Serial.print(", loop end time: "); Serial.println(micros() - loopTime);
   #endif
 }

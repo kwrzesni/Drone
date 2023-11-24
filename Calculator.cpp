@@ -94,7 +94,6 @@ bool Calculator::isOnTheGround(float horizontalVelocity)
   if (groundTestReady)
   {
     float average = groundPointsSum / N_GROUND_TEST_POINTS;
-    Serial.println(average);
     if (average < GROUND_TEST_THRESHOLD && average > -GROUND_TEST_THRESHOLD)
     {
       ++groundTestScore;
@@ -103,7 +102,6 @@ bool Calculator::isOnTheGround(float horizontalVelocity)
     {
       groundTestScore = 0;
     }
-    Serial.println(groundTestScore);
     if (groundTestScore >= N_GROUND_TEST_POINTS)
     {
       return true;
