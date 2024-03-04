@@ -1,0 +1,29 @@
+#######################################
+# Syntax Coloring Map BasicTimer
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+TBasicTimer			KEYWORD1
+BasicTimer			KEYWORD1
+TStaticTimer		KEYWORD1
+StaticTimer			KEYWORD1
+TCallbackTimer		KEYWORD1
+CallbackTimer		KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+setTimeout			KEYWORD2
+now					KEYWORD2
+reset				KEYWORD2
+hasExpired			KEYWORD2
+whenExpired			KEYWORD2
+onExpire			KEYWORD2
+run					KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
