@@ -10,12 +10,17 @@ void Drone::begin()
   motor3.begin();
 
   // init sensors
-  Wire.setClock(400000);
   Wire.begin();
+  Wire.setClock(1000000);
   delay(250);
   gyroscope.begin();
   accelerometer.begin();
   barometer.begin();
+  readGyroscopeData();
+  readAccelerometerData();
+  readBarometerData();
+  delay(100);
+  gyroscope.init();
 
   // init low-pass filters
   readGyroscopeData();
@@ -44,11 +49,28 @@ void Drone::begin()
   // init remote communication
   ebyte32.begin();
   delay(2750);
+
+  Serial1.begin(1382400);
+  while (!Serial1.available())
+  {
+    delay(1000);
+  }
 }
+
+float values[] = {0,1,2,3,4,5};
+
 
 void Drone::step()
 {
   stepStartTime = micros();
+  
+  values[0] = rollRate;
+  values[1] = gyroscopeData.rollRate;
+  values[2] = pitchRate;
+  values[3] = gyroscopeData.pitchRate;
+  values[4] = yawRate;
+  values[5] = gyroscopeData.yawRate;
+  Serial1.write((const uint8*)values, sizeof(values));
   handleSensors();
   handleRemoteControl();
   handleStateChanges();
@@ -269,8 +291,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = pilotMessage.pitchAngle;
       targetYawRate = pilotMessage.yawRate;
       targetVerticalSpeed = pilotMessage.verticalSpeed;
-      targetRollRate = max(-30, min(targetRollAngle - rollAngle, 30));
-      targetPitchRate = max(-30, min(targetPitchAngle - pitchAngle, 30));
+      targetRollRate = targetRollAngle - rollAngle;
+      targetPitchRate = targetPitchAngle - pitchAngle;
       break;
     }
     case State::disconnected:
@@ -279,8 +301,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = 0.0f;
       targetYawRate = 0.0f;
       targetVerticalSpeed = 0.0f;
-      targetRollRate = max(-30, min(targetRollAngle - rollAngle, 30));
-      targetPitchRate = max(-30, min(targetPitchAngle - pitchAngle, 30));
+      targetRollRate = 0.0f - rollAngle;
+      targetPitchRate = 0.0f - pitchAngle;
       break;
     }
     case State::longTimeDisconnected:
@@ -289,8 +311,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = 0.0f;
       targetYawRate = 0.0f;
       targetVerticalSpeed = LANDING_SPEED;
-      targetRollRate = max(-30, min(targetRollAngle - rollAngle, 30));
-      targetPitchRate = max(-30, min(targetPitchAngle - pitchAngle, 30));
+      targetRollRate = 0.0f - rollAngle;
+      targetPitchRate = 0.0f - pitchAngle;
       break;
     }
   }
@@ -305,17 +327,12 @@ void Drone::setMotorsSpeed()
     float inputRoll = rollRatePID.step(targetRollRate - rollRate);
     float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
-    float inputThrottle = max(0.2, min(verticalAccelertionPID.step(targetVerticalSpeed - verticalSpeed) + NORMAL_MOTOR_SPEED, 0.8));
+    float inputThrottle = 0.008 * pilotMessage.verticalSpeed;
 
-    motor0Speed = inputThrottle - inputPitch - inputRoll - inputYaw;
-    motor1Speed = inputThrottle + inputPitch - inputRoll + inputYaw;
-    motor2Speed = inputThrottle + inputPitch + inputRoll - inputYaw;
-    motor3Speed = inputThrottle - inputPitch + inputRoll + inputYaw;
-
-    motor0Speed = linearizeThrottle(motor0Speed);
-    motor1Speed = linearizeThrottle(motor1Speed);
-    motor2Speed = linearizeThrottle(motor2Speed);
-    motor3Speed = linearizeThrottle(motor3Speed);
+    motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
+    motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
+    motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
+    motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
   }
 
   motor0.setSpeed(motor0Speed);
@@ -352,4 +369,17 @@ float Drone::toRadians(float angle)
 float Drone::toDegrees(float angle)
 {
   return angle * 180.0 / 3.14159265359f;
+}
+
+float Drone::clamp(float value, float min, float max)
+{
+  if (value < min)
+  {
+    return min;
+  }
+  if (value > max)
+  {
+    return max;
+  }
+  return value;
 }

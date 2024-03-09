@@ -11,8 +11,9 @@ public:
     float yawRate;
   };
 public:
-  Gyroscope(float rollRateCalibration = 0.0f, float pitchRateCalibration = 0.0f, float yawRateCalibration = 0.0f);
+  Gyroscope() = default;
   void begin() const;
+  void init();
   Data read() const;
 private:
   void writeRegister(int address, int value) const;
@@ -22,7 +23,8 @@ private:
   static constexpr int CTRL2_G_ADDRESS = 0x11;
   static constexpr int CTRL7_G_ADDRESS = 0x16;
   static constexpr int DATA_ADDRESS = 0x22;
-  const Data CALIBRATION;
+  static constexpr int N_INIT_POINTS = 1000;
+  Data calibration;
 };
 
 #endif
