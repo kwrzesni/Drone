@@ -49,6 +49,15 @@ void Drone::begin()
   // init remote communication
   ebyte32.begin();
   delay(2750);
+
+  Serial1.begin(1382400);
+  while (!Serial1.available())
+  {
+    delay(1000);
+  }
+  uint8* buffer = new uint8[Serial1.available()];
+  Serial1.readBytes(buffer, Serial1.available());
+  delete[] buffer;
 }
 
 float values[] = {0,1,2,3,4,5};
@@ -57,13 +66,6 @@ float values[] = {0,1,2,3,4,5};
 void Drone::step()
 {
   stepStartTime = micros();
-  
-  values[0] = rollRate;
-  values[1] = gyroscopeData.rollRate;
-  values[2] = pitchRate;
-  values[3] = gyroscopeData.pitchRate;
-  values[4] = yawRate;
-  values[5] = gyroscopeData.yawRate;
   handleSensors();
   handleRemoteControl();
   handleStateChanges();
@@ -164,6 +166,35 @@ void Drone::handleRemoteControl()
   {
     isConnected = false;
     disconnectTime = micros();
+  }
+
+  if (Serial1.available() >= 5)
+  {
+    uint8 buffer[5];
+    Serial1.readBytes(buffer, 5);
+    float value = *((float*)(buffer+1));
+    switch ((char)buffer[0])
+    {
+      case 'a':
+        rollRatePID.changeP(value);
+        break;
+      case 'b':
+        rollRatePID.changeI(value);
+        break;
+      case 'c':
+        rollRatePID.changeD(value);
+        break;
+      case 'd':
+        pitchRatePID.changeP(value);
+        break;
+      case 'e':
+        pitchRatePID.changeI(value);
+        break;
+      case 'f':
+        pitchRatePID.changeD(value);
+        break;
+    }
+    Serial1.write(buffer[0]);
   }
 }
 

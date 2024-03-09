@@ -48,3 +48,24 @@ void PID::change(float P, float I, float D)
     integralSum = 0.0f;
   }
 }
+
+void PID::changeP(float P)
+{
+  this->P = P;
+  previousError = 0.0f;
+  integralSum = 0.0f;
+}
+
+void PID::changeI(float I)
+{
+  this->I = I;
+  previousError = 0.0f;
+  integralSum = 0.0f;
+}
+
+void PID::changeD(float D)
+{
+  this->D = D;
+  previousError = 0.0f;
+  integralSum = 0.0f;
+}

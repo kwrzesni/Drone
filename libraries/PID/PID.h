@@ -8,6 +8,9 @@ public:
   float step(float error);
   void reset();
   void change(float P, float I, float D);
+  void changeP(float P);
+  void changeI(float I);
+  void changeD(float D);
 private:
   const float dt;
   float P;
