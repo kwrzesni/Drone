@@ -23,7 +23,7 @@ private:
   static constexpr int CTRL2_G_ADDRESS = 0x11;
   static constexpr int CTRL7_G_ADDRESS = 0x16;
   static constexpr int DATA_ADDRESS = 0x22;
-  static constexpr int N_INIT_POINTS = 1000;
+  static constexpr int N_INIT_POINTS = 2000;
   Data calibration;
 };
 

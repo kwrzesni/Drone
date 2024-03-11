@@ -3,8 +3,8 @@
 
 void Gyroscope::begin() const
 {
-  //set full-scale to 500 dps and ODR to 1.66 kHz (high performance)
-  writeRegister(CTRL2_G_ADDRESS, 0x84);
+  //set full-scale to 500 dps and ODR to 416 Hz (high performance)
+  writeRegister(CTRL2_G_ADDRESS, 0x64);
   // set high performance power mode
   writeRegister(CTRL7_G_ADDRESS, 0x00);
 }
@@ -20,6 +20,7 @@ void Gyroscope::init()
 	 rollRatesSum += data.rollRate;
 	 pitchRatesSum += data.pitchRate;
 	 yawRatesSum += data.yawRate;
+	 delay(4);
   }
   calibration.rollRate = rollRatesSum / N_INIT_POINTS;
   calibration.pitchRate = pitchRatesSum / N_INIT_POINTS;

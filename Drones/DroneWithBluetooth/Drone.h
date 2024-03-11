@@ -8,7 +8,6 @@
 #include <PID.h>
 #include <KalmanFilter.h>
 #include <LowPassFilter.h>
-#include <Motor.h>
 #include <CommonDataTypes.h>
 
 class Drone
@@ -26,6 +25,7 @@ public:
   void begin();
   void step();
 private:
+  void setMotorTimers();
   void readGyroscopeData();
   void readAccelerometerData();
   void readBarometerData();
@@ -39,6 +39,7 @@ private:
   void resetOnTheGroundTest();
   bool isUpsideDown();
   void setMotorsSpeed();
+  void setMotorsPWM();
   void waitTillEndOfStep();
   void resetPID();
 private:
@@ -68,14 +69,10 @@ private:
   Accelerometer accelerometer = {{ 0.024943, 0.008254, 0.009014 }, {1.002459, 0.000639, -0.000928, 0.000639, 0.998113, 0.001403, -0.000928, 0.001403, 0.994740}};
   Barometer barometer;
   Ebyte32 ebyte32 = Ebyte32{&Serial3, PB12};
-  Motor motor0 = Motor{PA2};
-  Motor motor1 = Motor{PA0};
-  Motor motor2 = Motor{PA1};
-  Motor motor3 = Motor{PA3};
 
   // Remote control
-  const unsigned long DISCONNECT_THRESHOLD = 1000000; // [μs]
-  const unsigned long LONG_DISCONNECT_THRESHOLD = 10000000; // [μs]
+  const unsigned long DISCONNECT_THRESHOLD = 100000; // [μs]
+  const unsigned long LONG_DISCONNECT_THRESHOLD = 1000000; // [μs]
   const unsigned short PILOT_ADDRESS = 0x2137;
   const unsigned char CHANNEL = 5;
   long lastPilotMessageTime = -999999;  // [μs]
@@ -84,7 +81,7 @@ private:
   DroneMessage droneMessage = {PowerState::off};
   
   // Control loop
-  const long STEP_TIME = 1000; // [μs]
+  const long STEP_TIME = 4000; // [μs]
   const float DT = STEP_TIME / 1000000.0f; // [s]
   const float NORMAL_MOTOR_SPEED = 0.4f;
   const float MINIMUM_MOTOR_SPEED_TO_SPIN = 0.04f;
@@ -116,18 +113,24 @@ private:
   Gyroscope::Data gyroscopeData = {};
   Accelerometer::Data accelerometerData = {};
   float barometerData = 0.0f;
-  LowPassFilter rollRateLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter pitchRateLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter yawRateLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter accelerometerXLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter accelerometerYLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter accelerometerZLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter barometerLowPassFilter = {32.821, 30.821}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter rollRateLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter pitchRateLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter yawRateLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter accelerometerXLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter accelerometerYLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter accelerometerZLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter barometerLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
   KalmanFilter<1> rollAngleKalmanFilter = {DT, 6.0f, 3.0f, 0.0f, 4.0f};
   KalmanFilter<1> pitchAngleKalmanFilter = {DT, 6.0f, 3.0f, 0.0f, 4.0f};
   KalmanFilter<2> heightAndVelocityKalmanFilter = {DT, 10.0f, 30.0f, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, DT, 0.0f, 1.0f}, {0.5 * DT * DT, DT}, {1.0f, 0.0f}};
   float groundLevelAltitude = 0.0f;
   int nNotMovingSteps = 0;
+
+  // Bluetooth data
+  float bluetoothVerticalSpeed = 0.0f;
+  float bluetoothRollAngle = 0.0f;
+  float bluetoothPitchAngle = 0.0f;
+  float bluetoothYawRate = 0.0f;
 };
 
 #endif

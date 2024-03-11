@@ -7,8 +7,8 @@ Accelerometer::Accelerometer(const Data& accelerometerOffset, const Acceleromete
 
 void Accelerometer::begin() const
 {
-  //set full-scale to 8g and ODR to 1.66 kHz (high performance)
-  writeRegister(CTRL1_XL_ADDRESS, 0x8C);
+  //set full-scale to 8g and ODR to 416 Hz (high performance)
+  writeRegister(CTRL1_XL_ADDRESS, 0x6C);
   // set high performance power mode
   writeRegister(CTRL6_C_ADDRESS, 0x00);
 }

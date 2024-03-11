@@ -1,13 +1,9 @@
 #include  "Drone.h"
 #include <Wire.h>
-
 void Drone::begin()
 {
   // begin motors
-  motor0.begin();
-  motor1.begin();
-  motor2.begin();
-  motor3.begin();
+  setMotorTimers();
 
   // init sensors
   Wire.begin();
@@ -60,8 +56,29 @@ void Drone::begin()
   delete[] buffer;
 }
 
-float values[] = {0,1,2,3,4,5};
+void Drone::setMotorTimers()
+{
+  TIMER2_BASE->CR1 = TIMER_CR1_CEN | TIMER_CR1_ARPE;
+  TIMER2_BASE->CR2 = 0;
+  TIMER2_BASE->SMCR = 0;
+  TIMER2_BASE->DIER = 0;
+  TIMER2_BASE->EGR = 0;
+  TIMER2_BASE->CCMR1 = (0b110 << 4) | TIMER_CCMR1_OC1PE |(0b110 << 12) | TIMER_CCMR1_OC2PE;
+  TIMER2_BASE->CCMR2 = (0b110 << 4) | TIMER_CCMR2_OC3PE |(0b110 << 12) | TIMER_CCMR2_OC4PE;
+  TIMER2_BASE->CCER = TIMER_CCER_CC1E | TIMER_CCER_CC2E | TIMER_CCER_CC3E | TIMER_CCER_CC4E;
+  TIMER2_BASE->PSC = 71;
+  TIMER2_BASE->DCR = 0;
 
+  TIMER2_BASE->CCR1 = 1000;
+  TIMER2_BASE->CCR2 = 1000;
+  TIMER2_BASE->CCR3 = 1000;
+  TIMER2_BASE->CCR4 = 1000;
+  pinMode(PA0, PWM);
+  pinMode(PA1, PWM);
+  pinMode(PA2, PWM);
+  pinMode(PA3, PWM);
+  TIMER2_BASE->ARR = 5000;
+}
 
 void Drone::step()
 {
@@ -100,7 +117,7 @@ void Drone::calculateDroneGroundLevel()
     readBarometerData();
     barometerAltitude = barometerLowPassFilter.step(barometerData);
     sum += barometerAltitude;
-    delay(1);
+    delay(4);
   }
   groundLevelAltitude = sum / N_GROUND_LEVEL_CALCULATING_MEASUREMENTS;
 }
@@ -193,6 +210,27 @@ void Drone::handleRemoteControl()
       case 'f':
         pitchRatePID.changeD(value);
         break;
+      case 'g':
+        yawRatePID.changeP(value);
+        break;
+      case 'h':
+        yawRatePID.changeI(value);
+        break;
+      case 'i':
+        yawRatePID.changeD(value);
+        break;
+      case 'j':
+        bluetoothVerticalSpeed = value;
+        break;
+      case 'k':
+        bluetoothRollAngle = value;
+        break;
+      case 'l':
+        bluetoothPitchAngle = value;
+        break;
+      case 'm':
+        bluetoothYawRate = value;
+        break;
     }
     Serial1.write(buffer[0]);
   }
@@ -221,7 +259,8 @@ void Drone::handleStateChanges()
       {
         if (micros() - disconnectTime <= LONG_DISCONNECT_THRESHOLD)
         {
-          state = State::disconnected;
+          state = State::off;
+          droneMessage.powerState = PowerState::off;
         }
         else
         {
@@ -311,10 +350,10 @@ void Drone::setMotorsSpeed()
   {
     case State::userControlled:
     {
-      targetRollAngle = pilotMessage.rollAngle;
-      targetPitchAngle = pilotMessage.pitchAngle;
-      targetYawRate = pilotMessage.yawRate;
-      targetVerticalSpeed = pilotMessage.verticalSpeed;
+      targetRollAngle = bluetoothRollAngle;
+      targetPitchAngle = bluetoothPitchAngle;
+      targetYawRate = bluetoothYawRate;
+      targetVerticalSpeed = bluetoothVerticalSpeed;
       targetRollRate = targetRollAngle - rollAngle;
       targetPitchRate = targetPitchAngle - pitchAngle;
       break;
@@ -357,12 +396,20 @@ void Drone::setMotorsSpeed()
     motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
+
+    motor0Speed = motor1Speed = motor2Speed = motor3Speed = targetVerticalSpeed;
   }
 
-  motor0.setSpeed(motor0Speed);
-  motor1.setSpeed(motor1Speed);
-  motor2.setSpeed(motor2Speed);
-  motor3.setSpeed(motor3Speed);
+  setMotorsPWM();
+}
+
+void Drone::setMotorsPWM()
+{
+  TIMER2_BASE->CCR1 = 1000 + int16_t(motor1Speed * 1000);
+  TIMER2_BASE->CCR2 = 1000 + int16_t(motor2Speed * 1000);
+  TIMER2_BASE->CCR3 = 1000 + int16_t(motor0Speed * 1000);
+  TIMER2_BASE->CCR4 = 1000 + int16_t(motor3Speed * 1000);
+  TIMER2_BASE->CNT = 5000;
 }
 
 void Drone::waitTillEndOfStep()
