@@ -600,7 +600,7 @@ if __name__ == '__main__':
     ports = serial.tools.list_ports.comports()
     bluetooth_port = None
     for port in ports:
-        if port.hwid == 'BTHENUM\\{00001101-0000-1000-8000-00805F9B34FB}_LOCALMFG&005D\\7&33E7E024&0&0022110020CF_C00000000':
+        if port.hwid.find('CF_C00000000') != -1:
             bluetooth_port = port
             break
     if bluetooth_port is None:
