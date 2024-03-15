@@ -43,7 +43,6 @@ private:
   void waitTillEndOfStep();
   void resetPID();
 private:
-  static float linearizeThrottle(double throttle);
   static float toRadians(float angle);
   static float toDegrees(float angle);
   static float clamp(float value, float min, float max);
@@ -81,16 +80,14 @@ private:
   DroneMessage droneMessage = {PowerState::off};
   
   // Control loop
-  const long STEP_TIME = 4000; // [μs]
+  const long STEP_TIME = 2500; // [μs]
   const float DT = STEP_TIME / 1000000.0f; // [s]
   const float NORMAL_MOTOR_SPEED = 0.4f;
   const float MINIMUM_MOTOR_SPEED_TO_SPIN = 0.04f;
   unsigned long stepStartTime = 0; // [μs]
   PID rollRatePID = {DT, 0.045113218565577f, 0.0189769802273489f, 0.00689194440870427};
   PID pitchRatePID = {DT, 0.0466233938938038, 0.0196122389894162, 0.00712265382693029};
-  //PID rollRatePID = {DT, 0.0015, 0.001, 0.06};
-  //PID pitchRatePID = {DT, 0.0015, 0.0012, 0.07};
-  PID yawRatePID = {DT, 0, 0, 0};
+  PID yawRatePID = {DT, 0.0f, 0.0f, 0.0f};
   PID verticalAccelertionPID = {DT, 0.003f, 0.0001f, 0.01f};
   float targetRollRate = 0.0f;
   float targetPitchRate = 0.0f;
@@ -105,7 +102,7 @@ private:
   float motor3Speed = 0.0f;
 
   // Data processing
-  const int N_GROUND_LEVEL_CALCULATING_MEASUREMENTS = 2000;
+  const int N_GROUND_LEVEL_CALCULATING_MEASUREMENTS = 250;
   const float NOT_MOVING_THRESHOLD = 3.0f;
   const int MINIMUM_NOT_MOVING_STEPS = 20;
   const float UPSIDE_DOWN_THRESHOLD = -0.75f;
@@ -113,13 +110,13 @@ private:
   Gyroscope::Data gyroscopeData = {};
   Accelerometer::Data accelerometerData = {};
   float barometerData = 0.0f;
-  LowPassFilter rollRateLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter pitchRateLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter yawRateLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter accelerometerXLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter accelerometerYLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter accelerometerZLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
-  LowPassFilter barometerLowPassFilter = {2.667f, 0.667f}; // sampling frequency: 166 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter rollRateLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter pitchRateLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter yawRateLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter accelerometerXLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter accelerometerYLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter accelerometerZLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
+  LowPassFilter barometerLowPassFilter = {13.706f, 11.706f}; // sampling frequency: 250 Hz, 3dB cutoff frequency: 10 Hz
   KalmanFilter<1> rollAngleKalmanFilter = {DT, 6.0f, 3.0f, 0.0f, 4.0f};
   KalmanFilter<1> pitchAngleKalmanFilter = {DT, 6.0f, 3.0f, 0.0f, 4.0f};
   KalmanFilter<2> heightAndVelocityKalmanFilter = {DT, 10.0f, 30.0f, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, DT, 0.0f, 1.0f}, {0.5 * DT * DT, DT}, {1.0f, 0.0f}};

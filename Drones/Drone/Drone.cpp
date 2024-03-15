@@ -109,7 +109,7 @@ void Drone::calculateDroneGroundLevel()
     readBarometerData();
     barometerAltitude = barometerLowPassFilter.step(barometerData);
     sum += barometerAltitude;
-    delay(4);
+    delay(20);
   }
   groundLevelAltitude = sum / N_GROUND_LEVEL_CALCULATING_MEASUREMENTS;
 }
@@ -331,7 +331,7 @@ void Drone::setMotorsSpeed()
     float inputRoll = rollRatePID.step(targetRollRate - rollRate);
     float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
-    float inputThrottle = 0.008 * pilotMessage.verticalSpeed;
+    float inputThrottle = 0.8 * pilotMessage.verticalSpeed;
 
     motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
@@ -363,13 +363,6 @@ void Drone::resetPID()
   yawRatePID.reset();
   verticalAccelertionPID.reset();
 }
-
-float Drone::linearizeThrottle(double throttle)
-{
-  double value = throttle < 0.01 ? 0.0 : 0.0247 + (1.9776 + (-2.736128 + (2.59260416 - 0.8589934592 * throttle) * throttle) * throttle) * throttle;
-  return max(0.0, min(value, 1.0));
-}
-
 
 float Drone::toRadians(float angle)
 {

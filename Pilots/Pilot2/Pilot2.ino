@@ -19,24 +19,27 @@ JoystickWithButton joystickWithButton(PA5, PA4, 2057, 2062, PA15);
 MAX17048  batteryFuelGauge;
 
 // constants
-const long BOTH_BUTTON_THRESHOLD = 3000000; //[μs]
+const long POWER_BUTTON_THRESHOLD = 300000; //[μs]
 const long DISCONNECTED_THRESHOLD = 1000000; //[μs]
 const long LOOP_PERIOD = 4000; //[μs]
-const float MAX_DRONE_VERTICAL_SPEED = 100; //[cm/s]
 const float MAX_TURN_ANGLE = 20; //[degree]
-const int SEND_PERIOD = 32; // [loops]
+const int SEND_PERIOD = 16; // [loops]
 const unsigned short DRONE_ADDRESS = 0x6969;
 const unsigned char CHANNEL = 5;
 const float NONE_STATE_VALUE = 0.005;
+const float MAX_YAW_RATE = 10.0f;
 
 // state variables
 bool isConnected = false;
 long lastDroneMessageTime = -999999;
 PilotMessage pilotMessage = {PowerState::none, 0, 0, 0, 0};
 DroneMessage droneMessage = {PowerState::none};
-bool bothButtonPressed = false;
-long firstTimeBothButtonPressed = 0;
+bool powerButtonPressed = false;
+long firstTimePowerButtonPressed = 0;
 bool bothButtonTriggered = false;
+int nYawRateMessages = 0;
+float previousYawRate = 0;
+float previousEncoderAngle = 0;
 int nLoop = 0;
 
 void setup() 
@@ -92,10 +95,45 @@ void loop()
   if (pilotMessage.powerState != PowerState::none)
   {
     //handle gimbal input
-    pilotMessage.verticalSpeed = MAX_DRONE_VERTICAL_SPEED * gimbal.read();
+    pilotMessage.verticalSpeed = gimbal.read();
 
     // handle encoderWithButton input
-    pilotMessage.yawRate = encoderWithButton.getModuloAngleInDegree();
+    float currentEncoderAngle = encoderWithButton.getAngleInDegree();
+    float encoderAngleDiff = currentEncoderAngle - previousEncoderAngle;
+    previousEncoderAngle = currentEncoderAngle;
+    if (pilotMessage.yawRate == 0.0f)
+    {
+      if (encoderAngleDiff > 0)
+      {
+        pilotMessage.yawRate = MAX_YAW_RATE;
+        nYawRateMessages = encoderAngleDiff / 9;
+      }
+      else if (encoderAngleDiff < 0)
+      {
+        pilotMessage.yawRate = -MAX_YAW_RATE;
+        nYawRateMessages = -encoderAngleDiff / 9;
+      }
+    }
+    else
+    {
+      if (encoderAngleDiff * pilotMessage.yawRate > 0)
+      {
+        nYawRateMessages += abs(encoderAngleDiff) / 9;
+      }
+      else
+      {
+        int temp = abs(encoderAngleDiff) / 9;
+        if (temp > nYawRateMessages)
+        {
+          pilotMessage.yawRate *= -1.0f;
+          nYawRateMessages = temp - nYawRateMessages;
+        }
+        else
+        {
+          nYawRateMessages -= temp;
+        }
+      }
+    }
 
     // handle joystickWithButton input
     auto joystickVector = joystickWithButton.getVector();
@@ -103,14 +141,14 @@ void loop()
     pilotMessage.rollAngle = -MAX_TURN_ANGLE * joystickVector.y;
 
     // handle buttons input
-    if (encoderWithButton.readButtonState() && joystickWithButton.readButtonState())
+    if (encoderWithButton.readButtonState())
     {
-      if (!bothButtonPressed)
+      if (!powerButtonPressed)
       {
-        bothButtonPressed = true;
-        firstTimeBothButtonPressed = micros();
+        powerButtonPressed = true;
+        firstTimePowerButtonPressed = micros();
       }
-      if (!bothButtonTriggered && micros() - firstTimeBothButtonPressed > BOTH_BUTTON_THRESHOLD)
+      if (!bothButtonTriggered && micros() - firstTimePowerButtonPressed > POWER_BUTTON_THRESHOLD)
       {
         bothButtonTriggered = true; 
         pilotMessage.powerState = pilotMessage.powerState == PowerState::on ? PowerState::off : PowerState::on;
@@ -118,7 +156,7 @@ void loop()
     }
     else
     {
-      bothButtonPressed = false;
+      powerButtonPressed = false;
       bothButtonTriggered = false;
     }
   }
@@ -140,6 +178,11 @@ void loop()
   if (nLoop % SEND_PERIOD == 0)
   {
     ebyte32.send<PilotMessage, 1>(DRONE_ADDRESS, CHANNEL, pilotMessage);
+    nYawRateMessages = nYawRateMessages > 0 ? nYawRateMessages - 1 : 0;
+    if (nYawRateMessages == 0)
+    {
+      pilotMessage.yawRate = 0.0f;
+    }
   }
 
   ++nLoop;

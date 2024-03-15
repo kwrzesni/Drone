@@ -4,7 +4,6 @@ Drone drone;
 
 void setup() 
 {
-  Serial.begin(9600);
   drone.begin();
 }
 

@@ -80,6 +80,8 @@ void Drone::setMotorTimers()
   TIMER2_BASE->ARR = 5000;
 }
 
+float values[3] = {};
+
 void Drone::step()
 {
   stepStartTime = micros();
@@ -117,7 +119,7 @@ void Drone::calculateDroneGroundLevel()
     readBarometerData();
     barometerAltitude = barometerLowPassFilter.step(barometerData);
     sum += barometerAltitude;
-    delay(4);
+    delay(20);
   }
   groundLevelAltitude = sum / N_GROUND_LEVEL_CALCULATING_MEASUREMENTS;
 }
@@ -350,9 +352,9 @@ void Drone::setMotorsSpeed()
   {
     case State::userControlled:
     {
-      targetRollAngle = bluetoothRollAngle;
-      targetPitchAngle = bluetoothPitchAngle;
-      targetYawRate = bluetoothYawRate;
+      targetRollAngle = pilotMessage.rollAngle;
+      targetPitchAngle = pilotMessage.pitchAngle;
+      targetYawRate = pilotMessage.yawRate;
       targetVerticalSpeed = bluetoothVerticalSpeed;
       targetRollRate = targetRollAngle - rollAngle;
       targetPitchRate = targetPitchAngle - pitchAngle;
@@ -390,14 +392,12 @@ void Drone::setMotorsSpeed()
     float inputRoll = rollRatePID.step(targetRollRate - rollRate);
     float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
-    float inputThrottle = 0.008 * pilotMessage.verticalSpeed;
+    float inputThrottle = bluetoothVerticalSpeed;
 
     motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-
-    motor0Speed = motor1Speed = motor2Speed = motor3Speed = targetVerticalSpeed;
   }
 
   setMotorsPWM();
@@ -424,13 +424,6 @@ void Drone::resetPID()
   yawRatePID.reset();
   verticalAccelertionPID.reset();
 }
-
-float Drone::linearizeThrottle(double throttle)
-{
-  double value = throttle < 0.01 ? 0.0 : 0.0247 + (1.9776 + (-2.736128 + (2.59260416 - 0.8589934592 * throttle) * throttle) * throttle) * throttle;
-  return max(0.0, min(value, 1.0));
-}
-
 
 float Drone::toRadians(float angle)
 {
