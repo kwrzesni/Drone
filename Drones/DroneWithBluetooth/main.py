@@ -8,6 +8,8 @@ from kivy.uix.textinput import TextInput
 import serial
 import serial.tools.list_ports
 import struct
+import threading
+
 
 def is_number(x):
     try:
@@ -17,23 +19,44 @@ def is_number(x):
         return False
 
 
-def connect():
+def connect(app, reconnect_button=None):
     n = 0
     while True:
         try:
             n += 1
-            print('trying to connect: ', n)
-            temp = serial.Serial(bluetooth_port.name, 1382400, timeout=1)
-            temp.write(bytes('s', 'ascii'))
-            temp.reset_input_buffer()
-            return temp
+            if reconnect_button is not None:
+                reconnect_button.text = 'try: ' + str(n)
+            app.ser = serial.Serial(bluetooth_port.name, 1382400, timeout=1)
+            app.ser.write(bytes('\0\0\0\0\0', 'ascii'))
+            app.ser.reset_input_buffer()
+            if reconnect_button is not None:
+                reconnect_button.text = 'reconnect'
+            break
         except serial.SerialException as inst:
             pass
 
 
-def reconnect():
-    ser.close()
-    return connect()
+def send(ser, code, text_input, button):
+    if is_number(text_input.text):
+        button.text = '...'
+        button.disabled = True
+        value = float(text_input.text)
+        ser.write(bytes(code, 'ascii') + struct.pack('f', value))
+        temp = myapp.ser.read(1)
+        if len(temp) == 0:
+            button.text = 'No response'
+            button.disabled = False
+        else:
+            temp = struct.unpack('c', temp)[0].decode("ascii")
+            if temp != code:
+                button.text = 'Wrong response'
+                button.disabled = False
+            else:
+                button.text = 'Update'
+                button.disabled = False
+        myapp.ser.reset_input_buffer()
+    else:
+        button.text = 'Wrong input'
 
 
 class DronePage(FloatLayout):
@@ -91,6 +114,10 @@ class DronePage(FloatLayout):
         self.yaw_rate_button.bind(on_press=self.send_yaw_rate)
         self.add_widget(self.yaw_rate_button)
 
+        self.reconnect_button = Button(text='reconnect', size_hint=(0.1, 0.05), pos_hint={'center_x': 0.92, 'center_y': 0.95})
+        self.reconnect_button.bind(on_press=self.reconnect)
+        self.add_widget(self.reconnect_button)
+
     def switch_roll(self, item):
         myapp.screen_manager.transition = SlideTransition(direction='left')
         myapp.screen_manager.current = 'Roll'
@@ -104,92 +131,24 @@ class DronePage(FloatLayout):
         myapp.screen_manager.current = 'Yaw'
 
     def send_vertical_speed(self, item):
-        if (is_number(self.vertical_speed_text_input.text)):
-            self.vertical_speed_button.text = 'sent'
-            self.vertical_speed_button.disabled = True
-            value = float(self.vertical_speed_text_input.text)
-            myapp.ser.write(bytes('j', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.vertical_speed_button.text = 'No response'
-                self.vertical_speed_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'j':
-                    self.vertical_speed_button.text = 'Wrong response'
-                    self.vertical_speed_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.vertical_speed_button.text = 'Update'
-                    self.vertical_speed_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'j', self.vertical_speed_text_input, self.vertical_speed_button)).start()
 
     def send_roll_angle(self, item):
-        if (is_number(self.roll_angle_text_input.text)):
-            self.roll_angle_button.text = 'sent'
-            self.roll_angle_button.disabled = True
-            value = float(self.roll_angle_text_input.text)
-            myapp.ser.write(bytes('k', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.roll_angle_button.text = 'No response'
-                self.roll_angle_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'k':
-                    self.roll_angle_button.text = 'Wrong response'
-                    self.roll_angle_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.roll_angle_button.text = 'Update'
-                    self.roll_angle_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'k', self.roll_angle_text_input, self.roll_angle_button)).start()
 
     def send_pitch_angle(self, item):
-        if (is_number(self.pitch_angle_text_input.text)):
-            self.pitch_angle_button.text = 'sent'
-            self.pitch_angle_button.disabled = True
-            value = float(self.pitch_angle_text_input.text)
-            myapp.ser.write(bytes('l', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.pitch_angle_button.text = 'No response'
-                self.pitch_angle_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'l':
-                    self.pitch_angle_button.text = 'Wrong response'
-                    self.pitch_angle_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.pitch_angle_button.text = 'Update'
-                    self.pitch_angle_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'l', self.pitch_angle_text_input, self.pitch_angle_button)).start()
 
     def send_yaw_rate(self, item):
-        if (is_number(self.yaw_rate_text_input.text)):
-            self.yaw_rate_button.text = 'sent'
-            self.yaw_rate_button.disabled = True
-            value = float(self.yaw_rate_text_input.text)
-            myapp.ser.write(bytes('m', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.yaw_rate_button.text = 'No response'
-                self.yaw_rate_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'm':
-                    self.yaw_rate_button.text = 'Wrong response'
-                    self.yaw_rate_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.yaw_rate_button.text = 'Update'
-                    self.yaw_rate_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'm', self.yaw_rate_text_input, self.yaw_rate_button)).start()
+
+    def reconnect(self, item):
+        myapp.ser.close()
+        threading.Thread(target=connect, args=(myapp, item)).start()
 
 
 class RollPage(FloatLayout):
@@ -239,6 +198,10 @@ class RollPage(FloatLayout):
         self.d_button.bind(on_press=self.sendD)
         self.add_widget(self.d_button)
 
+        self.reconnect_button = Button(text='reconnect', size_hint=(0.1, 0.05), pos_hint={'center_x': 0.92, 'center_y': 0.95})
+        self.reconnect_button.bind(on_press=self.reconnect)
+        self.add_widget(self.reconnect_button)
+
     def switch_drone(self, item):
         myapp.screen_manager.transition = SlideTransition(direction='left')
         myapp.screen_manager.current = 'Drone'
@@ -252,71 +215,20 @@ class RollPage(FloatLayout):
         myapp.screen_manager.current = 'Yaw'
 
     def sendP(self, item):
-        if (is_number(self.p_text_input.text)):
-            self.p_button.text = 'sent'
-            self.p_button.disabled = True
-            value = float(self.p_text_input.text)
-            myapp.ser.write(bytes('a', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.p_button.text = 'No response'
-                self.p_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'a':
-                    self.p_button.text = 'Wrong response'
-                    self.p_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.p_button.text = 'Update'
-                    self.p_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'a', self.p_text_input, self.p_button)).start()
 
     def sendI(self, item):
-        if (is_number(self.i_text_input.text)):
-            self.i_button.text = 'sent'
-            self.i_button.disabled = True
-            value = float(self.i_text_input.text)
-            myapp.ser.write(bytes('b', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.i_button.text = 'No response'
-                self.i_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'b':
-                    self.i_button.text = 'Wrong response'
-                    self.i_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.i_button.text = 'Update'
-                    self.i_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'b', self.i_text_input, self.i_button)).start()
 
     def sendD(self, item):
-        if (is_number(self.d_text_input.text)):
-            self.d_button.text = 'sent'
-            self.d_button.disabled = True
-            value = float(self.d_text_input.text)
-            myapp.ser.write(bytes('c', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.d_button.text = 'No response'
-                self.d_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'c':
-                    self.d_button.text = 'Wrong response'
-                    self.d_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.d_button.text = 'Update'
-                    self.d_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'c', self.d_text_input, self.d_button)).start()
 
+    def reconnect(self, item):
+        myapp.ser.close()
+        threading.Thread(target=connect, args=(myapp, item)).start()
 
 
 class PitchPage(FloatLayout):
@@ -365,6 +277,10 @@ class PitchPage(FloatLayout):
         self.d_button.bind(on_press=self.sendD)
         self.add_widget(self.d_button)
 
+        self.reconnect_button = Button(text='reconnect', size_hint=(0.1, 0.05), pos_hint={'center_x': 0.92, 'center_y': 0.95})
+        self.reconnect_button.bind(on_press=self.reconnect)
+        self.add_widget(self.reconnect_button)
+
     def switch_drone(self, item):
         myapp.screen_manager.transition = SlideTransition(direction='left')
         myapp.screen_manager.current = 'Drone'
@@ -378,70 +294,20 @@ class PitchPage(FloatLayout):
         myapp.screen_manager.current = 'Yaw'
 
     def sendP(self, item):
-        if (is_number(self.p_text_input.text)):
-            self.p_button.text = 'sent'
-            self.p_button.disabled = True
-            value = float(self.p_text_input.text)
-            myapp.ser.write(bytes('d', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.p_button.text = 'No response'
-                self.p_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'd':
-                    self.p_button.text = 'Wrong response'
-                    self.p_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.p_button.text = 'Update'
-                    self.p_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'd', self.d_text_input, self.d_button)).start()
 
     def sendI(self, item):
-        if (is_number(self.i_text_input.text)):
-            self.i_button.text = 'sent'
-            self.i_button.disabled = True
-            value = float(self.i_text_input.text)
-            myapp.ser.write(bytes('e', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.i_button.text = 'No response'
-                self.i_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'e':
-                    self.i_button.text = 'Wrong response'
-                    self.i_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.i_button.text = 'Update'
-                    self.i_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'e', self.d_text_input, self.d_button)).start()
 
     def sendD(self, item):
-        if (is_number(self.d_text_input.text)):
-            self.d_button.text = 'sent'
-            self.d_button.disabled = True
-            value = float(self.d_text_input.text)
-            myapp.ser.write(bytes('f', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.d_button.text = 'No response'
-                self.d_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'f':
-                    self.d_button.text = 'Wrong response'
-                    self.d_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.d_button.text = 'Update'
-                    self.d_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'f', self.d_text_input, self.d_button)).start()
+
+    def reconnect(self, item):
+        myapp.ser.close()
+        threading.Thread(target=connect, args=(myapp, item)).start()
 
 class YawPage(FloatLayout):
     def __init__(self):
@@ -489,6 +355,10 @@ class YawPage(FloatLayout):
         self.d_button.bind(on_press=self.sendD)
         self.add_widget(self.d_button)
 
+        self.reconnect_button = Button(text='reconnect', size_hint=(0.1, 0.05), pos_hint={'center_x': 0.92, 'center_y': 0.95})
+        self.reconnect_button.bind(on_press=self.reconnect)
+        self.add_widget(self.reconnect_button)
+
     def switch_drone(self, item):
         myapp.screen_manager.transition = SlideTransition(direction='left')
         myapp.screen_manager.current = 'Drone'
@@ -502,76 +372,27 @@ class YawPage(FloatLayout):
         myapp.screen_manager.current = 'Pitch'
 
     def sendP(self, item):
-        if (is_number(self.p_text_input.text)):
-            self.p_button.text = 'sent'
-            self.p_button.disabled = True
-            value = float(self.p_text_input.text)
-            myapp.ser.write(bytes('g', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.p_button.text = 'No response'
-                self.p_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'g':
-                    self.p_button.text = 'Wrong response'
-                    self.p_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.p_button.text = 'Update'
-                    self.p_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'g', self.d_text_input, self.d_button)).start()
 
     def sendI(self, item):
-        if (is_number(self.i_text_input.text)):
-            self.i_button.text = 'sent'
-            self.i_button.disabled = True
-            value = float(self.i_text_input.text)
-            myapp.ser.write(bytes('h', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.i_button.text = 'No response'
-                self.i_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'h':
-                    self.i_button.text = 'Wrong response'
-                    self.i_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.i_button.text = 'Update'
-                    self.i_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'h', self.d_text_input, self.d_button)).start()
 
     def sendD(self, item):
-        if (is_number(self.d_text_input.text)):
-            self.d_button.text = 'sent'
-            self.d_button.disabled = True
-            value = float(self.d_text_input.text)
-            myapp.ser.write(bytes('i', 'ascii')+struct.pack('f', value))
-            temp = myapp.ser.read(1)
-            if len(temp) == 0:
-                self.d_button.text = 'No response'
-                self.d_button.disabled = False
-                myapp.ser = reconnect()
-            else:
-                temp = struct.unpack('c', temp)[0].decode("ascii")
-                if temp != 'i':
-                    self.d_button.text = 'Wrong response'
-                    self.d_button.disabled = False
-                    myapp.ser = reconnect()
-                else:
-                    self.d_button.text = 'Update'
-                    self.d_button.disabled = False
-            myapp.ser.reset_input_buffer()
+        threading.Thread(target=send,
+                         args=(myapp.ser, 'i', self.d_text_input, self.d_button)).start()
+
+    def reconnect(self, item):
+        myapp.ser.close()
+        threading.Thread(target=connect, args=(myapp, item)).start()
 
 
 class MyApp(App):
-    def __init__(self, ser):
+    def __init__(self):
         super().__init__()
-        self.ser = ser
+        self.ser = None
+        connect(self)
 
     def build(self):
         self.screen_manager = ScreenManager()
@@ -605,7 +426,6 @@ if __name__ == '__main__':
             break
     if bluetooth_port is None:
         exit(-1)
-    ser = connect()
-    myapp = MyApp(ser)
+    myapp = MyApp()
     myapp.run()
-    ser.close()
+    myapp.ser.close()

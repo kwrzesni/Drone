@@ -191,50 +191,53 @@ void Drone::handleRemoteControl()
   {
     uint8 buffer[5];
     Serial1.readBytes(buffer, 5);
-    float value = *((float*)(buffer+1));
-    switch ((char)buffer[0])
+    if (int(buffer[0]) != 0)
     {
-      case 'a':
-        rollRatePID.changeP(value);
-        break;
-      case 'b':
-        rollRatePID.changeI(value);
-        break;
-      case 'c':
-        rollRatePID.changeD(value);
-        break;
-      case 'd':
-        pitchRatePID.changeP(value);
-        break;
-      case 'e':
-        pitchRatePID.changeI(value);
-        break;
-      case 'f':
-        pitchRatePID.changeD(value);
-        break;
-      case 'g':
-        yawRatePID.changeP(value);
-        break;
-      case 'h':
-        yawRatePID.changeI(value);
-        break;
-      case 'i':
-        yawRatePID.changeD(value);
-        break;
-      case 'j':
-        bluetoothVerticalSpeed = value;
-        break;
-      case 'k':
-        bluetoothRollAngle = value;
-        break;
-      case 'l':
-        bluetoothPitchAngle = value;
-        break;
-      case 'm':
-        bluetoothYawRate = value;
-        break;
+      float value = *((float*)(buffer+1));
+      switch ((char)buffer[0])
+      {
+        case 'a':
+          rollRatePID.changeP(value);
+          break;
+        case 'b':
+          rollRatePID.changeI(value);
+          break;
+        case 'c':
+          rollRatePID.changeD(value);
+          break;
+        case 'd':
+          pitchRatePID.changeP(value);
+          break;
+        case 'e':
+          pitchRatePID.changeI(value);
+          break;
+        case 'f':
+          pitchRatePID.changeD(value);
+          break;
+        case 'g':
+          yawRatePID.changeP(value);
+          break;
+        case 'h':
+          yawRatePID.changeI(value);
+          break;
+        case 'i':
+          yawRatePID.changeD(value);
+          break;
+        case 'j':
+          bluetoothVerticalSpeed = value;
+          break;
+        case 'k':
+          bluetoothRollAngle = value;
+          break;
+        case 'l':
+          bluetoothPitchAngle = value;
+          break;
+        case 'm':
+          bluetoothYawRate = value;
+          break;
+      }
+      Serial1.write(buffer[0]);
     }
-    Serial1.write(buffer[0]);
   }
 }
 
@@ -392,12 +395,12 @@ void Drone::setMotorsSpeed()
     float inputRoll = rollRatePID.step(targetRollRate - rollRate);
     float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
-    float inputThrottle = bluetoothVerticalSpeed;
+    float inputThrottle = 1000 * bluetoothVerticalSpeed;
 
-    motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-    motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-    motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-    motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
+    motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
   }
 
   setMotorsPWM();
@@ -405,10 +408,10 @@ void Drone::setMotorsSpeed()
 
 void Drone::setMotorsPWM()
 {
-  TIMER2_BASE->CCR1 = 1000 + int16_t(motor1Speed * 1000);
-  TIMER2_BASE->CCR2 = 1000 + int16_t(motor2Speed * 1000);
-  TIMER2_BASE->CCR3 = 1000 + int16_t(motor0Speed * 1000);
-  TIMER2_BASE->CCR4 = 1000 + int16_t(motor3Speed * 1000);
+  TIMER2_BASE->CCR1 = 1000 + motor1Speed;
+  TIMER2_BASE->CCR2 = 1000 + motor2Speed;
+  TIMER2_BASE->CCR3 = 1000 + motor0Speed;
+  TIMER2_BASE->CCR4 = 1000 + motor3Speed;
   TIMER2_BASE->CNT = 5000;
 }
 
