@@ -337,6 +337,8 @@ void Drone::setMotorsSpeed()
     motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
     motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
+
+    motor0Speed = motor1Speed = motor2Speed = motor3Speed = clamp(pilotMessage.verticalSpeed, 0.0f, 1.0f);
   }
 
   setMotorsPWM();

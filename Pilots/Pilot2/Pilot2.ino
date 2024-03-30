@@ -38,8 +38,7 @@ bool powerButtonPressed = false;
 long firstTimePowerButtonPressed = 0;
 bool bothButtonTriggered = false;
 int nYawRateMessages = 0;
-float previousYawRate = 0;
-float previousEncoderAngle = 0;
+long previousEncoderAngle = 0;
 int nLoop = 0;
 
 void setup() 
@@ -98,10 +97,10 @@ void loop()
     pilotMessage.verticalSpeed = gimbal.read();
 
     // handle encoderWithButton input
-    float currentEncoderAngle = encoderWithButton.getAngleInDegree();
-    float encoderAngleDiff = currentEncoderAngle - previousEncoderAngle;
+    long currentEncoderAngle = encoderWithButton.getAngleInDegree();
+    long encoderAngleDiff = currentEncoderAngle - previousEncoderAngle;
     previousEncoderAngle = currentEncoderAngle;
-    if (pilotMessage.yawRate == 0.0f)
+    if (pilotMessage.yawRate == 0)
     {
       if (encoderAngleDiff > 0)
       {
@@ -122,7 +121,7 @@ void loop()
       }
       else
       {
-        int temp = abs(encoderAngleDiff) / 9;
+        long temp = abs(encoderAngleDiff) / 9;
         if (temp > nYawRateMessages)
         {
           pilotMessage.yawRate *= -1.0f;

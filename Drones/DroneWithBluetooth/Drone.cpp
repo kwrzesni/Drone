@@ -1,5 +1,6 @@
 #include  "Drone.h"
 #include <Wire.h>
+
 void Drone::begin()
 {
   // begin motors
@@ -80,12 +81,23 @@ void Drone::setMotorTimers()
   TIMER2_BASE->ARR = 5000;
 }
 
-float values[3] = {};
+float values[10] = {};
 
 void Drone::step()
 {
   stepStartTime = micros();
   handleSensors();
+  values[0] = rollRate;
+  values[1] = pitchRate;
+  values[2] = yawRate;
+  values[3] = accelerometerX;
+  values[4] = accelerometerY;
+  values[5] = accelerometerZ;
+  values[6] = rollAngle;
+  values[7] = pitchAngle;
+  values[8] = altitude;
+  values[9] = verticalSpeed;
+  //Serial1.write((const uint8*)values, sizeof(values));
   handleRemoteControl();
   handleStateChanges();
   setMotorsSpeed();
@@ -396,6 +408,7 @@ void Drone::setMotorsSpeed()
     float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
     float inputThrottle = 1000 * bluetoothVerticalSpeed;
+    //float inputThrottle = 1000 * pilotMessage.verticalSpeed;
 
     motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
     motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);

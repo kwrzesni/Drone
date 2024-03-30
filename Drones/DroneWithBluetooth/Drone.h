@@ -83,7 +83,7 @@ private:
   const long STEP_TIME = 2500; // [μs]
   const float DT = STEP_TIME / 1000000.0f; // [s]
   const float NORMAL_MOTOR_SPEED = 400.0f;
-  const float MINIMUM_MOTOR_SPEED_TO_SPIN = 40.0f;
+  const float MINIMUM_MOTOR_SPEED_TO_SPIN = 0.0f;
   const float MAXIMUM_MOTOR_SPEED = 1000.0f;
   const float PID_LIMIT = 400;
   unsigned long stepStartTime = 0; // [μs]

@@ -295,11 +295,11 @@ class PitchPage(FloatLayout):
 
     def sendP(self, item):
         threading.Thread(target=send,
-                         args=(myapp.ser, 'd', self.d_text_input, self.d_button)).start()
+                         args=(myapp.ser, 'd', self.p_text_input, self.p_button)).start()
 
     def sendI(self, item):
         threading.Thread(target=send,
-                         args=(myapp.ser, 'e', self.d_text_input, self.d_button)).start()
+                         args=(myapp.ser, 'e', self.i_text_input, self.i_button)).start()
 
     def sendD(self, item):
         threading.Thread(target=send,
@@ -373,11 +373,11 @@ class YawPage(FloatLayout):
 
     def sendP(self, item):
         threading.Thread(target=send,
-                         args=(myapp.ser, 'g', self.d_text_input, self.d_button)).start()
+                         args=(myapp.ser, 'g', self.p_text_input, self.p_button)).start()
 
     def sendI(self, item):
         threading.Thread(target=send,
-                         args=(myapp.ser, 'h', self.d_text_input, self.d_button)).start()
+                         args=(myapp.ser, 'h', self.i_text_input, self.i_button)).start()
 
     def sendD(self, item):
         threading.Thread(target=send,

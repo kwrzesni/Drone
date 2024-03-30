@@ -43,7 +43,7 @@ void Drone::setMotorTimers()
 
 void Drone::setMotorsSpeed()
 {
-  if (micros() - testStartTime < 5000000)
+  if (micros() - testStartTime < 2000000)
   {
     motor0Speed = motor1Speed = motor2Speed = motor3Speed = 1.0;
   }
