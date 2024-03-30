@@ -83,11 +83,12 @@ private:
   const long STEP_TIME = 2500; // [μs]
   const float DT = STEP_TIME / 1000000.0f; // [s]
   const float NORMAL_MOTOR_SPEED = 0.4f;
-  const float MINIMUM_MOTOR_SPEED_TO_SPIN = 0.04f;
+  const float MINIMUM_MOTOR_SPEED_TO_SPIN = 100.0f;
+  const float PID_LIMIT = 400;
   unsigned long stepStartTime = 0; // [μs]
-  PID rollRatePID = {DT, 0.045113218565577f, 0.0189769802273489f, 0.00689194440870427};
-  PID pitchRatePID = {DT, 0.0466233938938038, 0.0196122389894162, 0.00712265382693029};
-  PID yawRatePID = {DT, 0.0f, 0.0f, 0.0f};
+  PID rollRatePID = {8.0f, 0.0f, 10.0f, PID_LIMIT};
+  PID pitchRatePID = {8.0f, 0.0f, 10.0f, PID_LIMIT};
+  PID yawRatePID = {3.0f, 0.01f, 0.0f, PID_LIMIT};
   PID verticalAccelertionPID = {DT, 0.003f, 0.0001f, 0.01f};
   float targetRollRate = 0.0f;
   float targetPitchRate = 0.0f;

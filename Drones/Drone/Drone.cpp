@@ -331,14 +331,12 @@ void Drone::setMotorsSpeed()
     float inputRoll = rollRatePID.step(targetRollRate - rollRate);
     float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
-    float inputThrottle = 0.8 * pilotMessage.verticalSpeed;
+    float inputThrottle = 800.0f * pilotMessage.verticalSpeed;
 
-    motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-    motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-    motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-    motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1.0f);
-
-    motor0Speed = motor1Speed = motor2Speed = motor3Speed = clamp(pilotMessage.verticalSpeed, 0.0f, 1.0f);
+    motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1000.0f);
+    motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1000.0f);
+    motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1000.0f);
+    motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, 1000.0f);
   }
 
   setMotorsPWM();
@@ -346,10 +344,10 @@ void Drone::setMotorsSpeed()
 
 void Drone::setMotorsPWM()
 {
-  TIMER2_BASE->CCR1 = 1000 + int16_t(motor1Speed * 1000);
-  TIMER2_BASE->CCR2 = 1000 + int16_t(motor2Speed * 1000);
-  TIMER2_BASE->CCR3 = 1000 + int16_t(motor0Speed * 1000);
-  TIMER2_BASE->CCR4 = 1000 + int16_t(motor3Speed * 1000);
+  TIMER2_BASE->CCR1 = 1000 + motor1Speed;
+  TIMER2_BASE->CCR2 = 1000 + motor2Speed;
+  TIMER2_BASE->CCR3 = 1000 + motor0Speed;
+  TIMER2_BASE->CCR4 = 1000 + motor3Speed;
   TIMER2_BASE->CNT = 5000;
 }
 
