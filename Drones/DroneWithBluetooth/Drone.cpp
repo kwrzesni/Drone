@@ -81,26 +81,21 @@ void Drone::setMotorTimers()
   TIMER2_BASE->ARR = 5000;
 }
 
-float values[10] = {};
+float values[5] = {};
 
 void Drone::step()
 {
   stepStartTime = micros();
   handleSensors();
-  values[0] = rollRate;
-  values[1] = pitchRate;
-  values[2] = yawRate;
-  values[3] = accelerometerX;
-  values[4] = accelerometerY;
-  values[5] = accelerometerZ;
-  values[6] = rollAngle;
-  values[7] = pitchAngle;
-  values[8] = altitude;
-  values[9] = verticalSpeed;
-  //Serial1.write((const uint8*)values, sizeof(values));
   handleRemoteControl();
   handleStateChanges();
   setMotorsSpeed();
+  values[0] = targetPitchAngle;
+  values[1] = targetPitchRate;
+  values[2] = pitchAngle;
+  values[3] = pitchRate;
+  values[4] = inputPitch;
+  //Serial1.write((const uint8*)values, sizeof(values));
   waitTillEndOfStep();
 }
 
@@ -368,11 +363,11 @@ void Drone::setMotorsSpeed()
     case State::userControlled:
     {
       targetRollAngle = pilotMessage.rollAngle;
-      targetPitchAngle = pilotMessage.pitchAngle;
+      targetPitchAngle = pilotMessage.verticalSpeed * 90;
       targetYawRate = pilotMessage.yawRate;
       targetVerticalSpeed = bluetoothVerticalSpeed;
-      targetRollRate = targetRollAngle - rollAngle;
-      targetPitchRate = targetPitchAngle - pitchAngle;
+      targetRollRate = rollAnglePID.step(targetRollAngle - rollAngle);
+      targetPitchRate = pitchAnglePID.step(targetPitchAngle - pitchAngle);
       break;
     }
     case State::disconnected:
@@ -381,8 +376,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = 0.0f;
       targetYawRate = 0.0f;
       targetVerticalSpeed = 0.0f;
-      targetRollRate = 0.0f - rollAngle;
-      targetPitchRate = 0.0f - pitchAngle;
+      targetRollRate = rollAnglePID.step(0.0f - rollAngle);
+      targetPitchRate = pitchAnglePID.step(0.0f - pitchAngle);
       break;
     }
     case State::longTimeDisconnected:
@@ -391,8 +386,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = 0.0f;
       targetYawRate = 0.0f;
       targetVerticalSpeed = LANDING_SPEED;
-      targetRollRate = 0.0f - rollAngle;
-      targetPitchRate = 0.0f - pitchAngle;
+      targetRollRate = rollAnglePID.step(0.0f - rollAngle);
+      targetPitchRate = pitchAnglePID.step(0.0f - pitchAngle);
       break;
     }
   }
@@ -404,16 +399,19 @@ void Drone::setMotorsSpeed()
   }
   else
   {
-    float inputRoll = rollRatePID.step(targetRollRate - rollRate);
-    float inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
+    inputRoll = rollRatePID.step(targetRollRate - rollRate);
+    inputPitch = pitchRatePID.step(targetPitchRate - pitchRate);
     float inputYaw = yawRatePID.step(targetYawRate - yawRate);
-    float inputThrottle = 1000 * bluetoothVerticalSpeed;
+    float inputThrottle = 1000 * 0.3f;
+    //float inputThrottle = 1000 * bluetoothVerticalSpeed;
     //float inputThrottle = 1000 * pilotMessage.verticalSpeed;
 
-    motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
-    motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
-    motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
-    motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    //motor0Speed = clamp(inputThrottle - inputPitch - inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    //motor1Speed = clamp(inputThrottle + inputPitch - inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    //motor2Speed = clamp(inputThrottle + inputPitch + inputRoll - inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    //motor3Speed = clamp(inputThrottle - inputPitch + inputRoll + inputYaw, MINIMUM_MOTOR_SPEED_TO_SPIN, MAXIMUM_MOTOR_SPEED);
+    motor0Speed = 1000 * bluetoothVerticalSpeed;
+    motor1Speed = motor2Speed = motor3Speed = 0.0f;
   }
 
   setMotorsPWM();

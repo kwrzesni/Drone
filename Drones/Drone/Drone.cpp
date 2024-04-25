@@ -295,8 +295,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = pilotMessage.pitchAngle;
       targetYawRate = pilotMessage.yawRate;
       targetVerticalSpeed = pilotMessage.verticalSpeed;
-      targetRollRate = targetRollAngle - rollAngle;
-      targetPitchRate = targetPitchAngle - pitchAngle;
+      targetRollRate = rollAnglePID.step(targetRollAngle - rollAngle);
+      targetPitchRate = pitchAnglePID.step(targetPitchAngle - pitchAngle);
       break;
     }
     case State::disconnected:
@@ -305,8 +305,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = 0.0f;
       targetYawRate = 0.0f;
       targetVerticalSpeed = 0.0f;
-      targetRollRate = 0.0f - rollAngle;
-      targetPitchRate = 0.0f - pitchAngle;
+      targetRollRate = rollAnglePID.step(0.0f - rollAngle);
+      targetPitchRate = pitchAnglePID.step(0.0f - pitchAngle);
       break;
     }
     case State::longTimeDisconnected:
@@ -315,8 +315,8 @@ void Drone::setMotorsSpeed()
       targetPitchAngle = 0.0f;
       targetYawRate = 0.0f;
       targetVerticalSpeed = LANDING_SPEED;
-      targetRollRate = 0.0f - rollAngle;
-      targetPitchRate = 0.0f - pitchAngle;
+      targetRollRate = rollAnglePID.step(0.0f - rollAngle);
+      targetPitchRate = pitchAnglePID.step(0.0f - pitchAngle);
       break;
     }
   }
